@@ -1,0 +1,22 @@
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+    - name: tinselly
+      url-base: https://github.com/tinselly
+
+  defaults:
+    remote: zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: 4256cd41df6c60f1832fd2deb14edc30ac7debab
+      import: true
+    - name: hal_st
+      path: modules/hal/st
+    - name: hal_stm32
+      path: modules/hal/stm32
+
+  self:
+    path: homethings
