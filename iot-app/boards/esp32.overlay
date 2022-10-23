@@ -1,0 +1,45 @@
+
+
+#include <dt-bindings/led/led.h>
+
+/ {
+    chosen {
+
+    };
+
+    zephyr,user {
+       
+    };
+
+    aliases {
+        led-strip = &led_strip;
+    };
+
+};
+
+&rtc {
+    status = "okay";
+};
+
+&spi2 {
+    // pinctrl-0 = <&spi4_sck_pe12 &spi4_miso_pe5 &spi4_mosi_pe14>;
+    // pinctrl-names = "default";
+    status = "okay";
+
+    led_strip: ws2812@0 {
+        compatible = "worldsemi,ws2812-spi";
+
+        /* SPI */
+        reg = <0>; /* ignored, but necessary for SPI bindings */
+        spi-max-frequency = <4000000>;
+        frame-format = <32768>; /* SPI_FRAME_FORMAT_TI */
+
+        /* WS2812 */
+        chain-length = <140>; /* arbitrary; change at will */
+        spi-one-frame = <0x70>;
+        spi-zero-frame = <0x40>;
+        color-mapping = <LED_COLOR_ID_GREEN LED_COLOR_ID_RED LED_COLOR_ID_BLUE>;
+
+        status = "okay";
+    };
+};
