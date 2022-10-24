@@ -10,11 +10,12 @@ extern "C" {
 
 /******************************************************************************/
 
-#define STRIP_COLOR_PALETTE_SIZE 6
+#define STRIP_COLOR_MAX_COUNT 6
 
 /******************************************************************************/
 
-void strip_set_color_palette(size_t i, uint32_t color);
+void strip_set_color_count(size_t count);
+void strip_set_color(size_t i, uint32_t color);
 
 /******************************************************************************/
 
