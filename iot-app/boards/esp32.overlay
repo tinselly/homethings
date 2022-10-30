@@ -1,5 +1,4 @@
 
-
 #include <dt-bindings/led/led.h>
 
 / {
@@ -14,11 +13,14 @@
     aliases {
         led-strip = &led_strip;
     };
-
 };
 
 &rtc {
     status = "okay";
+};
+
+&wifi {
+	status = "okay";
 };
 
 &spi2 {

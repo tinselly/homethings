@@ -17,7 +17,7 @@
 #define STRIP_NODE DT_ALIAS(led_strip)
 #define STRIP_NUM_PIXELS DT_PROP(DT_ALIAS(led_strip), chain_length)
 
-#define STRIP_FPS 600
+#define STRIP_FPS 120
 #define STRIP_FIXED_FRAME_MS (1000 / STRIP_FPS)
 
 /******************************************************************************/
@@ -28,73 +28,23 @@ K_MUTEX_DEFINE(s_strip_mutex);
 
 static void strip_thread(void* unused1, void* unused2, void* unused3);
 
-K_THREAD_DEFINE(s_strip_thread, 3072, strip_thread, NULL, NULL, NULL, -1, 0, 0);
+K_THREAD_DEFINE(s_strip_thread, 2048, strip_thread, NULL, NULL, NULL, -1, 0, 0);
 
 /******************************************************************************/
 
-static uint32_t s_colors[STRIP_COLOR_MAX_COUNT] = {
-    0x170f01,
-    0x1a0a00,
-    0x140401,
-};
+static struct strip_config s_config;
+static struct strip_state s_state;
 
-static uint32_t s_color_count = 3;
-static uint32_t s_anim_time_ms = 70000;
-static uint32_t s_time_ms = 0;
+static uint32_t s_anim_time_ms = 50000;
 static uint32_t s_cursor = 0;
 static uint32_t s_cursor_next = 1;
-static uint32_t s_intensity = 100;
 
 static struct led_rgb s_pixels[STRIP_NUM_PIXELS];
 static const struct device* const s_strip = DEVICE_DT_GET(STRIP_NODE);
 
 /******************************************************************************/
 
-static uint8_t color_lerp_comp(uint8_t lhs, uint8_t rhs, uint8_t alpha)
-{
-    return lhs + (uint8_t)(((float)alpha * (float)(rhs - lhs)) / 100.0f);
-}
-
-/**
- * @brief
- *
- * @param lhs
- * @param rhs
- * @param alpha 0 - 100 %
- * @return Result color
- */
-static uint32_t color_lerp(uint32_t lhs, uint32_t rhs, uint8_t alpha)
-{
-    uint32_t result = 0;
-
-    alpha = MIN(100, alpha);
-
-    result += color_lerp_comp((lhs >> 16) & 0xFF, (rhs >> 16) & 0xFF, alpha) << 16;
-    result += color_lerp_comp((lhs >> 8) & 0xFF, (rhs >> 8) & 0xFF, alpha) << 8;
-    result += color_lerp_comp((lhs >> 0) & 0xFF, (rhs >> 0) & 0xFF, alpha) << 0;
-
-    return result;
-}
-
-static uint8_t color_intensity_comp(uint8_t c, uint8_t intensity)
-{
-    return (uint8_t)(((int)c * (int)intensity) / 100);
-}
-
-static uint32_t color_intensity(uint32_t color, uint8_t intensity)
-{
-    uint32_t result = 0;
-
-    intensity = MIN(100, intensity);
-
-    result += color_intensity_comp((color >> 16) & 0xFF, intensity) << 16;
-    result += color_intensity_comp((color >> 8) & 0xFF, intensity) << 8;
-    result += color_intensity_comp((color >> 0) & 0xFF, intensity) << 0;
-
-    return result;
-}
-
-static void set_led_rgb(uint32_t color, struct led_rgb* rgb)
+static void led_rgb_set_color(color_t color, struct led_rgb* rgb)
 {
     rgb->r = (color >> 16) & 0xFF;
     rgb->g = (color >> 8) & 0xFF;
@@ -105,21 +55,21 @@ static void set_led_rgb(uint32_t color, struct led_rgb* rgb)
 
 static void strip_finished()
 {
-    s_cursor = (s_cursor + 1) % s_color_count;
-    s_cursor_next = (s_cursor + 1) % s_color_count;
+    s_state.color_prev = (s_state.color_prev + 1) % s_config.colors_count;
+    s_state.color_next = (s_state.color_prev + 1) % s_config.colors_count;
 }
 
 static void strip_animate(uint32_t dt, uint32_t time)
 {
     struct led_rgb color;
 
-    const uint32_t lerp = color_intensity(
-        color_lerp(s_colors[s_cursor], s_colors[s_cursor_next], (time * 100) / s_anim_time_ms),
-         s_intensity);
+    const color_t lerp = color_intensity(
+        color_lerp(s_config.colors[s_state.color_prev], s_config.colors[s_state.color_next], (time * 100) / s_anim_time_ms),
+        s_config.intensity);
 
-    set_led_rgb(lerp, &color);
+    led_rgb_set_color(lerp, &color);
 
-    for (size_t i = 0; i < ARRAY_SIZE(s_pixels); ++i) {
+    for (size_t i = 0; i < s_config.pixels_count; ++i) {
         memcpy(&s_pixels[i], &color, sizeof(struct led_rgb));
     }
 }
@@ -129,12 +79,12 @@ static void strip_update(uint32_t dt)
     /* Reset pixels */
     memset(&s_pixels, 0x00, sizeof(s_pixels));
 
-    s_time_ms = MIN(s_anim_time_ms, s_time_ms + dt);
+    s_state.time = MIN(s_anim_time_ms, s_state.time + dt);
 
-    strip_animate(dt, s_time_ms);
+    strip_animate(dt, s_state.time);
 
-    if (s_time_ms >= s_anim_time_ms) {
-        s_time_ms = 1;
+    if (s_state.time >= s_anim_time_ms) {
+        s_state.time = 1;
         strip_finished();
     }
 
@@ -151,12 +101,28 @@ void strip_thread(void* unused1, void* unused2, void* unused3)
 
     k_thread_cpu_pin(s_strip_thread, 0);
 
-    size_t cursor = 0, color = 0;
-
     if (!device_is_ready(s_strip)) {
         LOG_ERR("LED strip device %s is not ready", s_strip->name);
         return;
     }
+
+    k_mutex_lock(&s_strip_mutex, K_FOREVER);
+
+    memset(&s_config, 0x00, sizeof(s_config));
+
+    s_config.colors[s_config.colors_count++] = 0xdb920b;
+    s_config.colors[s_config.colors_count++] = 0xe6b800;
+    s_config.colors[s_config.colors_count++] = 0xe6c807;
+    s_config.colors[s_config.colors_count++] = 0xcfd60b;
+    s_config.intensity = 75;
+    s_config.speed = 100;
+    s_config.pixels_count = ARRAY_SIZE(s_pixels);
+
+    memset(&s_state, 0x00, sizeof(s_state));
+    s_state.config = &s_config;
+    s_state.time = 0;
+
+    k_mutex_unlock(&s_strip_mutex);
 
     uint32_t prev_time = 0;
     while (true) {
@@ -165,7 +131,9 @@ void strip_thread(void* unused1, void* unused2, void* unused3)
         const uint32_t dt_time = start_time - prev_time;
         prev_time = start_time;
 
+        k_mutex_lock(&s_strip_mutex, K_FOREVER);
         strip_update(dt_time);
+        k_mutex_unlock(&s_strip_mutex);
 
         // Keep updating at fixed frame rate
         const uint32_t diff_time = k_uptime_get_32() - start_time;
@@ -182,7 +150,7 @@ void strip_thread(void* unused1, void* unused2, void* unused3)
 
 void strip_set_color_count(size_t count)
 {
-    if (count > ARRAY_SIZE(s_colors)) {
+    if (count > ARRAY_SIZE(s_config.colors)) {
         return;
     }
 
@@ -190,14 +158,14 @@ void strip_set_color_count(size_t count)
         return;
     }
 
-    s_color_count = MAX(1, count);
+    s_config.colors_count = MAX(1, count);
 
     k_mutex_unlock(&s_strip_mutex);
 }
 
-void strip_set_color(size_t i, uint32_t color)
+void strip_set_color(size_t i, color_t color)
 {
-    if (i >= ARRAY_SIZE(s_colors)) {
+    if (i >= ARRAY_SIZE(s_config.colors)) {
         return;
     }
 
@@ -205,7 +173,7 @@ void strip_set_color(size_t i, uint32_t color)
         return;
     }
 
-    s_colors[i] = color;
+    s_config.colors[i] = color;
 
     k_mutex_unlock(&s_strip_mutex);
 }

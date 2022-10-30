@@ -2,7 +2,7 @@
 #ifndef HOMETHINGS_STRIP_H_
 #define HOMETHINGS_STRIP_H_
 
-#include <zephyr/kernel.h>
+#include "color.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,8 +14,25 @@ extern "C" {
 
 /******************************************************************************/
 
+struct strip_config {
+    color_t colors[STRIP_COLOR_MAX_COUNT];
+    size_t colors_count;
+    size_t pixels_count;
+    uint8_t intensity;
+    uint8_t speed;
+};
+
+struct strip_state {
+    const struct strip_config* config;
+    uint32_t time;
+    size_t color_prev;
+    size_t color_next;
+};
+
+/******************************************************************************/
+
 void strip_set_color_count(size_t count);
-void strip_set_color(size_t i, uint32_t color);
+void strip_set_color(size_t i, color_t color);
 
 /******************************************************************************/
 

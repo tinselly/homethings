@@ -7,8 +7,9 @@ target_sources(
 
     main.c
     strip.c
+    color.c
 
-    ble_strip.c
+    # ble_strip.c
 )
 
 target_include_directories(
