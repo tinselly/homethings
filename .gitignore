@@ -3,3 +3,8 @@ build*
 
 certs/*
 !certs/.gitkeep
+
+iot-app/src/local_config.h
+iot-app/src/certs/*
+!iot-app/src/certs/.gitkeep
+!iot-app/src/certs/certs.h

@@ -8,8 +8,7 @@ target_sources(
     main.c
     strip.c
     color.c
-
-    # ble_strip.c
+    mqtt.c
 )
 
 target_include_directories(
