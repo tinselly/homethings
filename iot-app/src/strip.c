@@ -44,8 +44,7 @@ static const struct device* const s_strip = DEVICE_DT_GET(STRIP_NODE);
 
 /******************************************************************************/
 
-static void led_rgb_set_color(color_t color, struct led_rgb* rgb)
-{
+static void led_rgb_set_color(color_t color, struct led_rgb* rgb) {
     rgb->r = (color >> 16) & 0xFF;
     rgb->g = (color >> 8) & 0xFF;
     rgb->b = (color >> 0) & 0xFF;
@@ -53,19 +52,18 @@ static void led_rgb_set_color(color_t color, struct led_rgb* rgb)
 
 /******************************************************************************/
 
-static void strip_finished()
-{
+static void strip_finished() {
     s_state.color_prev = (s_state.color_prev + 1) % s_config.colors_count;
     s_state.color_next = (s_state.color_prev + 1) % s_config.colors_count;
 }
 
-static void strip_animate(uint32_t dt, uint32_t time)
-{
+static void strip_animate(uint32_t dt, uint32_t time) {
     struct led_rgb color;
 
-    const color_t lerp = color_intensity(
-        color_lerp(s_config.colors[s_state.color_prev], s_config.colors[s_state.color_next], (time * 100) / s_anim_time_ms),
-        s_config.intensity);
+    const color_t lerp = color_intensity(color_lerp(s_config.colors[s_state.color_prev],
+                                                    s_config.colors[s_state.color_next],
+                                                    (time * 100) / s_anim_time_ms),
+                                         s_config.intensity);
 
     led_rgb_set_color(lerp, &color);
 
@@ -74,8 +72,7 @@ static void strip_animate(uint32_t dt, uint32_t time)
     }
 }
 
-static void strip_update(uint32_t dt)
-{
+static void strip_update(uint32_t dt) {
     /* Reset pixels */
     memset(&s_pixels, 0x00, sizeof(s_pixels));
 
@@ -92,8 +89,7 @@ static void strip_update(uint32_t dt)
     led_strip_update_rgb(s_strip, &s_pixels[0], ARRAY_SIZE(s_pixels));
 }
 
-void strip_thread(void* unused1, void* unused2, void* unused3)
-{
+void strip_thread(void* unused1, void* unused2, void* unused3) {
 
     ARG_UNUSED(unused1);
     ARG_UNUSED(unused2);
@@ -148,8 +144,7 @@ void strip_thread(void* unused1, void* unused2, void* unused3)
 
 /******************************************************************************/
 
-void strip_set_color_count(size_t count)
-{
+void strip_set_color_count(size_t count) {
     if (count > ARRAY_SIZE(s_config.colors)) {
         return;
     }
@@ -163,8 +158,7 @@ void strip_set_color_count(size_t count)
     k_mutex_unlock(&s_strip_mutex);
 }
 
-void strip_set_color(size_t i, color_t color)
-{
+void strip_set_color(size_t i, color_t color) {
     if (i >= ARRAY_SIZE(s_config.colors)) {
         return;
     }
@@ -176,6 +170,20 @@ void strip_set_color(size_t i, color_t color)
     s_config.colors[i] = color;
 
     k_mutex_unlock(&s_strip_mutex);
+}
+
+void strip_set_intensity(uint8_t intensity) {
+    if (k_mutex_lock(&s_strip_mutex, K_MSEC(500)) != 0) {
+        return;
+    }
+
+    s_config.intensity = intensity;
+
+    k_mutex_unlock(&s_strip_mutex);
+}
+
+void strip_set_animation(uint8_t animation) {
+    
 }
 
 /******************************************************************************/

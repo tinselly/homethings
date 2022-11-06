@@ -11,13 +11,16 @@
 #include "certs/certs.h"
 #include "local_config.h"
 
+#include "cmd.h"
+
 /******************************************************************************/
 
 #define DEVICE_TOPIC "homethings/led/" MQTT_CLIENTID
+#define DEVICE_CMD_TOPIC DEVICE_TOPIC "/cmd"
 
 /******************************************************************************/
 
-LOG_MODULE_REGISTER(mqtt_azure, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(mqtt);
 
 /******************************************************************************/
 
@@ -54,10 +57,6 @@ static struct zsock_addrinfo* s_dns_haddr;
 static K_SEM_DEFINE(s_mqtt_start, 0, 1);
 
 static sec_tag_t s_sec_tags[] = { APP_CA_CERT_TAG, APP_DEV_CERT_TAG, APP_DEV_KEY_TAG };
-
-static uint8_t topic[] = "homethings/led/" MQTT_CLIENTID;
-static struct mqtt_topic s_subs_topic;
-static struct mqtt_subscription_list s_subs_list;
 
 static struct mqtt_topic s_will_topic = { MQTT_UTF8_LITERAL(DEVICE_TOPIC), 1 };
 static struct mqtt_utf8 s_will_message = MQTT_UTF8_LITERAL("Offline");
@@ -148,9 +147,9 @@ static void client_init(struct mqtt_client* client) {
 
 static void mqtt_event_handler(struct mqtt_client* const client, const struct mqtt_evt* evt) {
     struct mqtt_puback_param puback;
-    uint8_t data[33];
-    int len;
-    int bytes_read;
+    static uint8_t payload_data[1024];
+    int len = 0;
+    int bytes_read = 0;
 
     switch (evt->type) {
         case MQTT_EVT_SUBACK:
@@ -184,32 +183,30 @@ static void mqtt_event_handler(struct mqtt_client* const client, const struct mq
                 break;
             }
 
-            LOG_DBG("PUBACK packet id: %u\n", evt->param.puback.message_id);
             break;
 
         case MQTT_EVT_PUBLISH:
             len = evt->param.publish.message.payload.len;
 
             LOG_INF("MQTT publish received %d, %d bytes", evt->result, len);
-            LOG_INF(" id: %d, qos: %d",
-                    evt->param.publish.message_id,
-                    evt->param.publish.message.topic.qos);
 
-            while (len) {
-                bytes_read = mqtt_read_publish_payload(
-                    &s_client_ctx, data, len >= sizeof(data) - 1 ? sizeof(data) - 1 : len);
-                if (bytes_read < 0 && bytes_read != -EAGAIN) {
-                    LOG_ERR("failure to read payload");
-                    break;
-                }
+            bytes_read = mqtt_read_publish_payload(
+                &s_client_ctx,
+                &payload_data[0],
+                len >= sizeof(payload_data) - 1 ? sizeof(payload_data) - 1 : len);
 
-                data[bytes_read] = '\0';
-                LOG_INF("   payload: %s", data);
-                len -= bytes_read;
+            if (bytes_read < 0 && bytes_read != -EAGAIN) {
+                LOG_ERR("failure to read payload");
+                break;
             }
 
             puback.message_id = evt->param.publish.message_id;
             mqtt_publish_qos1_ack(&s_client_ctx, &puback);
+
+            if (bytes_read == len) {
+                homethings_led_cmd(&payload_data[0], bytes_read);
+            }
+
             break;
 
         default:
@@ -221,16 +218,20 @@ static void mqtt_event_handler(struct mqtt_client* const client, const struct mq
 static void subscribe(struct mqtt_client* client) {
     int rc = 0;
 
+    struct mqtt_topic subs_topic;
+
+    struct mqtt_subscription_list subs_list = {
+        .list = &subs_topic,
+        .list_count = 1U,
+        .message_id = 1U,
+    };
+
     /* subscribe */
-    subs_topic.topic.utf8 = topic;
-    subs_topic.topic.size = strlen(topic);
-    subs_list.list = &subs_topic;
-    subs_list.list_count = 1U;
-    subs_list.message_id = 1U;
+    subs_topic.topic = MQTT_UTF8_LITERAL(DEVICE_CMD_TOPIC);
 
     rc = mqtt_subscribe(client, &subs_list);
     if (rc != 0) {
-        LOG_ERR("Failed on topic %s", topic);
+        LOG_ERR("Failed subscribe on topics");
     }
 }
 
@@ -412,10 +413,10 @@ static void mqtt_thread(void* unused1, void* unused2, void* unused3) {
     net_mgmt_add_event_callback(&s_l4_mgmt_cb);
 #endif
 
+    k_sem_take(&s_mqtt_start, K_FOREVER);
+
     while (true) {
         int rc = 0;
-
-        k_sem_take(&s_mqtt_start, K_FOREVER);
 
 #if defined(CONFIG_DNS_RESOLVER)
         rc = get_mqtt_broker_addrinfo();

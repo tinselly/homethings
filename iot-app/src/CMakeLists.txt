@@ -9,6 +9,7 @@ target_sources(
     strip.c
     color.c
     mqtt.c
+    cmd.c
 )
 
 target_include_directories(

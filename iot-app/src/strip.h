@@ -33,6 +33,8 @@ struct strip_state {
 
 void strip_set_color_count(size_t count);
 void strip_set_color(size_t i, color_t color);
+void strip_set_intensity(uint8_t intensity);
+void strip_set_animation(uint8_t animation);
 
 /******************************************************************************/
 
