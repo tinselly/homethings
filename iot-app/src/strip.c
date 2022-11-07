@@ -17,7 +17,7 @@
 #define STRIP_NODE DT_ALIAS(led_strip)
 #define STRIP_NUM_PIXELS DT_PROP(DT_ALIAS(led_strip), chain_length)
 
-#define STRIP_FPS 120
+#define STRIP_FPS 64
 #define STRIP_FIXED_FRAME_MS (1000 / STRIP_FPS)
 
 /******************************************************************************/
@@ -35,7 +35,7 @@ K_THREAD_DEFINE(s_strip_thread, 2048, strip_thread, NULL, NULL, NULL, -1, 0, 0);
 static struct strip_config s_config;
 static struct strip_state s_state;
 
-static uint32_t s_anim_time_ms = 50000;
+static uint32_t s_anim_time_ms = 5000;
 static uint32_t s_cursor = 0;
 static uint32_t s_cursor_next = 1;
 
@@ -60,12 +60,14 @@ static void strip_finished() {
 static void strip_animate(uint32_t dt, uint32_t time) {
     struct led_rgb color;
 
-    const color_t lerp = color_intensity(color_lerp(s_config.colors[s_state.color_prev],
-                                                    s_config.colors[s_state.color_next],
-                                                    (time * 100) / s_anim_time_ms),
-                                         s_config.intensity);
+    color_t result = color_lerp(s_config.colors[s_state.color_prev],
+                                s_config.colors[s_state.color_next],
+                                (time * 100) / s_anim_time_ms);
 
-    led_rgb_set_color(lerp, &color);
+    result = color_intensity(result, color_get_alpha(result));
+    // result = color_intensity(result, s_config.intensity);
+
+    led_rgb_set_color(result, &color);
 
     for (size_t i = 0; i < s_config.pixels_count; ++i) {
         memcpy(&s_pixels[i], &color, sizeof(struct led_rgb));
@@ -106,11 +108,11 @@ void strip_thread(void* unused1, void* unused2, void* unused3) {
 
     memset(&s_config, 0x00, sizeof(s_config));
 
-    s_config.colors[s_config.colors_count++] = 0xdb920b;
-    s_config.colors[s_config.colors_count++] = 0xe6b800;
-    s_config.colors[s_config.colors_count++] = 0xe6c807;
-    s_config.colors[s_config.colors_count++] = 0xcfd60b;
-    s_config.intensity = 75;
+    s_config.colors[s_config.colors_count++] = 0xffdb920b;
+    s_config.colors[s_config.colors_count++] = 0xffe6b800;
+    s_config.colors[s_config.colors_count++] = 0xffe6c807;
+    s_config.colors[s_config.colors_count++] = 0xffcfd60b;
+    s_config.intensity = 85;
     s_config.speed = 100;
     s_config.pixels_count = ARRAY_SIZE(s_pixels);
 
@@ -182,8 +184,6 @@ void strip_set_intensity(uint8_t intensity) {
     k_mutex_unlock(&s_strip_mutex);
 }
 
-void strip_set_animation(uint8_t animation) {
-    
-}
+void strip_set_animation(uint8_t animation) {}
 
 /******************************************************************************/

@@ -3,8 +3,10 @@
 
 #include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/logging/log.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "strip.h"
@@ -28,7 +30,7 @@ struct led_cmd {
     bool enabled;
     uint32_t intensity;
     uint32_t animation;
-    color_t colors[STRIP_COLOR_MAX_COUNT];
+    const char* colors[STRIP_COLOR_MAX_COUNT];
     uint32_t colors_count;
 };
 
@@ -41,7 +43,7 @@ static const struct json_obj_descr s_led_cmd_descr[] = {
                          colors,
                          STRIP_COLOR_MAX_COUNT,
                          colors_count,
-                         JSON_TOK_NUMBER),
+                         JSON_TOK_STRING),
 };
 
 static char s_json_buffer[2048];
@@ -67,10 +69,15 @@ int homethings_led_cmd(const uint8_t* data, size_t len) {
         return rc;
     }
 
-    LOG_INF("new cmd {%d, %d}", cmd.colors_count, cmd.intensity);
+    printk("NEW STRIP CONFIG\n");
+    printk("Intensity %u\n", cmd.intensity);
 
     for (size_t i = 0; i < cmd.colors_count; ++i) {
-        strip_set_color(i, cmd.colors[i]);
+        color_t color = strtoul(cmd.colors[i], NULL, 16);
+        color = sys_be32_to_cpu(color);
+        color = (color & 0xFF00FF00) | (color & 0x000000FF) << 16 | (color & 0x00FF0000) >> 16;
+        strip_set_color(i, color);
+        printk("Color[%u]: #%08X Alpha:%u\n", i, color, color_get_alpha(color));
     }
 
     strip_set_color_count(cmd.colors_count);
