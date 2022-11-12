@@ -17,27 +17,42 @@ extern "C" {
 struct strip_config {
     color_t colors[STRIP_COLOR_MAX_COUNT];
     size_t colors_count;
+    struct led_rgb* pixels;
     size_t pixels_count;
     uint8_t intensity;
     uint32_t animation_time;
     uint32_t animation;
+    bool enabled;
 };
 
 struct strip_state {
-    const struct strip_config* config;
     uint32_t time;
-    size_t color_prev;
-    size_t color_next;
+    uint32_t animation_dt;
+    size_t color_prev_idx;
+    size_t color_next_idx;
 };
 
-typedef void(*strip_animate_t)(const struct strip_state* state);
-
 /******************************************************************************/
+
+void strip_color_to_rgb(color_t color, struct led_rgb* rgb);
+
+int strip_lock(k_timeout_t timeout);
+void strip_unlock();
+int strip_wait_for_enabled(k_timeout_t timeout);
+
+const struct strip_config* strip_get_config();
+struct strip_config* strip_get_config_mut();
+
+const struct strip_state* strip_get_state();
+struct strip_state* strip_get_state_mut();
+
+int strip_sync();
 
 void strip_set_color_count(size_t count);
 void strip_set_color(size_t i, color_t color);
 void strip_set_intensity(uint8_t intensity);
 void strip_set_animation(uint8_t animation);
+void strip_set_enabled(bool enabled);
 
 /******************************************************************************/
 

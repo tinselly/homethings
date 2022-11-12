@@ -29,7 +29,7 @@ color_t color_lerp(color_t begin, color_t end, uint8_t dt);
  * @brief
  *
  * @param color
- * @param intensity Delta in range 0 - 100 %
+ * @param intensity Intensity in range 0 - 255
  * @return Result color
  */
 color_t color_intensity(color_t color, color_comp_t intensity);

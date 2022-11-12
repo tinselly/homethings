@@ -6,10 +6,13 @@ target_sources(
     PRIVATE 
 
     main.c
+    strip_thread.c
+    mqtt.c
+
+    cmd.c
+    animation.c
     strip.c
     color.c
-    mqtt.c
-    cmd.c
 )
 
 target_include_directories(
