@@ -32,6 +32,7 @@ void animation_create_wave(struct animation* animation);
 
 void animation_fill_color(const struct strip_config* config, color_t color);
 void animation_set_color(size_t i, const struct strip_config* config, color_t color);
+size_t animation_next_pixel_index(size_t i, const struct strip_config* config);
 
 /******************************************************************************/
 

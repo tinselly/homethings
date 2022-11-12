@@ -3,5 +3,7 @@
         "*.h": "c",
         "*.cppm": "cpp",
         "*.ixx": "cpp",
+        "xmemory": "c",
+        "xutility": "c"
     }
 }

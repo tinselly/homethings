@@ -15,7 +15,7 @@
 
 /******************************************************************************/
 
-#define STRIP_FPS 90
+#define STRIP_FPS 60
 #define STRIP_FIXED_FRAME_MS (1000 / STRIP_FPS)
 #define ANIMATION_MAX_COUNT 16
 

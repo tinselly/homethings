@@ -30,7 +30,7 @@ static struct led_rgb s_pixels[STRIP_NUM_PIXELS];
 static const struct device* const s_strip = DEVICE_DT_GET(STRIP_NODE);
 
 static struct strip_config s_config = {
-    .colors = { 0xff966e00, 0xff966e00 },
+    .colors = { 0xff7a5a01, 0xff7a5a01 },
     .colors_count = 1,
     .pixels = &s_pixels[0],
     .pixels_count = STRIP_NUM_PIXELS,
