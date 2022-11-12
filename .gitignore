@@ -4,9 +4,9 @@ build*
 certs/*
 !certs/.gitkeep
 
-iot-app/src/local_config.h
-iot-app/src/certs/*
-!iot-app/src/certs/.gitkeep
-!iot-app/src/certs/certs.h
+iot-led/src/local_config.h
+iot-led/src/certs/*
+!iot-led/src/certs/.gitkeep
+!iot-led/src/certs/certs.h
 
 **/**/__pycache__
