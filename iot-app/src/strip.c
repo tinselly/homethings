@@ -28,16 +28,12 @@ K_MUTEX_DEFINE(s_strip_mutex);
 
 static void strip_thread(void* unused1, void* unused2, void* unused3);
 
-K_THREAD_DEFINE(s_strip_thread, 2048, strip_thread, NULL, NULL, NULL, -1, 0, 0);
+K_THREAD_DEFINE(s_strip_thread, 3072, strip_thread, NULL, NULL, NULL, -1, 0, 0);
 
 /******************************************************************************/
 
 static struct strip_config s_config;
 static struct strip_state s_state;
-
-static uint32_t s_anim_time_ms = 5000;
-static uint32_t s_cursor = 0;
-static uint32_t s_cursor_next = 1;
 
 static struct led_rgb s_pixels[STRIP_NUM_PIXELS];
 static const struct device* const s_strip = DEVICE_DT_GET(STRIP_NODE);
@@ -50,6 +46,56 @@ static void led_rgb_set_color(color_t color, struct led_rgb* rgb) {
     rgb->b = (color >> 0) & 0xFF;
 }
 
+static void fill_pixels(color_t color) {
+    struct led_rgb rgb;
+    led_rgb_set_color(color, &rgb);
+
+    for (size_t i = 0; i < s_config.pixels_count; ++i) {
+        memcpy(&s_pixels[i], &rgb, sizeof(struct led_rgb));
+    }
+}
+
+static void static_anim(const struct strip_state* state) {
+
+    color_t result = state->config->colors[0];
+
+    result = color_intensity(result, color_get_alpha(result));
+    result = color_intensity(result, state->config->intensity);
+
+    fill_pixels(result);
+}
+
+static void cycling_anim(const struct strip_state* state) {
+
+    const uint8_t delta = (uint8_t)((state->time * 100) / state->config->animation_time);
+
+    color_t result = color_lerp(
+        state->config->colors[state->color_prev], state->config->colors[state->color_next], delta);
+
+    result = color_intensity(result, color_get_alpha(result));
+    result = color_intensity(result, state->config->intensity);
+
+    fill_pixels(result);
+}
+
+static void wave_anim(const struct strip_state* state) {
+
+    const uint8_t delta = (uint8_t)((state->time * 100) / state->config->animation_time);
+
+    color_t result = color_lerp(
+        state->config->colors[state->color_prev], state->config->colors[state->color_next], delta);
+
+    result = color_intensity(result, color_get_alpha(result));
+    result = color_intensity(result, state->config->intensity);
+
+    fill_pixels(result);
+}
+
+static strip_animate_t s_animations[] = {
+    &static_anim,
+    &cycling_anim,
+};
+
 /******************************************************************************/
 
 static void strip_finished() {
@@ -57,32 +103,17 @@ static void strip_finished() {
     s_state.color_next = (s_state.color_prev + 1) % s_config.colors_count;
 }
 
-static void strip_animate(uint32_t dt, uint32_t time) {
-    struct led_rgb color;
-
-    color_t result = color_lerp(s_config.colors[s_state.color_prev],
-                                s_config.colors[s_state.color_next],
-                                (time * 100) / s_anim_time_ms);
-
-    result = color_intensity(result, color_get_alpha(result));
-    // result = color_intensity(result, s_config.intensity);
-
-    led_rgb_set_color(result, &color);
-
-    for (size_t i = 0; i < s_config.pixels_count; ++i) {
-        memcpy(&s_pixels[i], &color, sizeof(struct led_rgb));
-    }
-}
-
 static void strip_update(uint32_t dt) {
     /* Reset pixels */
     memset(&s_pixels, 0x00, sizeof(s_pixels));
 
-    s_state.time = MIN(s_anim_time_ms, s_state.time + dt);
+    s_state.time = MIN(s_config.animation_time, s_state.time + dt);
 
-    strip_animate(dt, s_state.time);
+    if (s_config.animation < ARRAY_SIZE(s_animations)) {
+        s_animations[s_config.animation](&s_state);
+    }
 
-    if (s_state.time >= s_anim_time_ms) {
+    if (s_state.time >= s_config.animation_time) {
         s_state.time = 1;
         strip_finished();
     }
@@ -108,12 +139,11 @@ void strip_thread(void* unused1, void* unused2, void* unused3) {
 
     memset(&s_config, 0x00, sizeof(s_config));
 
-    s_config.colors[s_config.colors_count++] = 0xffdb920b;
-    s_config.colors[s_config.colors_count++] = 0xffe6b800;
-    s_config.colors[s_config.colors_count++] = 0xffe6c807;
-    s_config.colors[s_config.colors_count++] = 0xffcfd60b;
-    s_config.intensity = 85;
-    s_config.speed = 100;
+    s_config.colors[s_config.colors_count++] = 0x4a00647a;
+    s_config.colors[s_config.colors_count++] = 0x6b00547a;
+    s_config.intensity = 240;
+    s_config.animation_time = 2 * 1000;
+    s_config.animation = 0;
     s_config.pixels_count = ARRAY_SIZE(s_pixels);
 
     memset(&s_state, 0x00, sizeof(s_state));
@@ -184,6 +214,18 @@ void strip_set_intensity(uint8_t intensity) {
     k_mutex_unlock(&s_strip_mutex);
 }
 
-void strip_set_animation(uint8_t animation) {}
+void strip_set_animation(uint8_t animation) {
+    if (animation >= ARRAY_SIZE(s_animations)) {
+        return;
+    }
+
+    if (k_mutex_lock(&s_strip_mutex, K_MSEC(500)) != 0) {
+        return;
+    }
+
+    s_config.animation = animation;
+
+    k_mutex_unlock(&s_strip_mutex);
+}
 
 /******************************************************************************/

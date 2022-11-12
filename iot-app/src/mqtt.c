@@ -437,6 +437,6 @@ static void mqtt_thread(void* unused1, void* unused2, void* unused3) {
 
 /******************************************************************************/
 
-K_THREAD_DEFINE(s_mqtt_thread, 4096, mqtt_thread, NULL, NULL, NULL, 5, 0, 0);
+K_THREAD_DEFINE(s_mqtt_thread, 5120, mqtt_thread, NULL, NULL, NULL, 2, 0, 0);
 
 /******************************************************************************/

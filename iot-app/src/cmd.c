@@ -39,6 +39,7 @@ struct led_cmd {
 static const struct json_obj_descr s_led_cmd_descr[] = {
     JSON_OBJ_DESCR_PRIM(struct led_cmd, enabled, JSON_TOK_TRUE),
     JSON_OBJ_DESCR_PRIM(struct led_cmd, intensity, JSON_TOK_NUMBER),
+    JSON_OBJ_DESCR_PRIM(struct led_cmd, animation, JSON_TOK_NUMBER),
     JSON_OBJ_DESCR_ARRAY(struct led_cmd,
                          colors,
                          STRIP_COLOR_MAX_COUNT,
@@ -71,6 +72,7 @@ int homethings_led_cmd(const uint8_t* data, size_t len) {
 
     printk("NEW STRIP CONFIG\n");
     printk("Intensity %u\n", cmd.intensity);
+    printk("Animation %u\n", cmd.animation);
 
     for (size_t i = 0; i < cmd.colors_count; ++i) {
         color_t color = strtoul(cmd.colors[i], NULL, 16);
@@ -81,7 +83,6 @@ int homethings_led_cmd(const uint8_t* data, size_t len) {
     }
 
     strip_set_color_count(cmd.colors_count);
-
     strip_set_intensity(cmd.intensity);
     strip_set_animation(cmd.animation);
 

@@ -1,4 +1,5 @@
-const HOST = "http://192.168.1.133:5000";
+// const HOST = "http://192.168.1.133:5000";
+const HOST = "http://192.168.1.123:5000";
 
 const Api = {
   getLedThings: () =>

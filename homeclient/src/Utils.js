@@ -8,8 +8,29 @@ function debounce(func, timeout = 250) {
   };
 }
 
+const RAND_ICONS = [
+  "👽",
+  "🛸",
+  "💡",
+  "😁",
+  "🤖",
+  "👾",
+  "👁️",
+  "🧠",
+  "🎉",
+  "🧸",
+  "🪩",
+  "🧬",
+  "🧪",
+  "🥕",
+  "🚀",
+  "❤️",
+  "☢️",
+];
+
 const Utils = {
   debounce: debounce,
+  randomIcon: () => RAND_ICONS[Math.floor(Math.random() * RAND_ICONS.length)],
 };
 
 export default Utils;

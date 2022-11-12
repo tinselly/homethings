@@ -11,6 +11,7 @@ import Accordion from "react-bootstrap/Accordion";
 
 import LedThing from "./LedThing";
 import Api from "./Api";
+import Utils from "./Utils";
 
 import logo from "./images/ufo.png";
 
@@ -19,10 +20,14 @@ import "./App.css";
 function App() {
   const [ledThings, setLedThings] = useState([]);
 
+  const [icon] = useState(Utils.randomIcon());
+
   useEffect(() => {
-    let interval = setInterval(() => {
-      Api.getLedThings().then((data) => setLedThings(data));
-    }, 1000);
+    const init = () => Api.getLedThings().then((data) => setLedThings(data));
+
+    init();
+
+    const interval = setInterval(init, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -39,11 +44,17 @@ function App() {
           />
         </Row>
         <Row className="justify-content-center">
-          <h1>HomeThings👽</h1>
+          <h1>{`HomeThings ${icon}`}</h1>
         </Row>
         <br />
         {ledThings.map((ledThing) => (
-          <LedThing id={ledThing.id} initialColors={ledThing.colors} />
+          <LedThing
+            id={ledThing.id}
+            key={ledThing.id}
+            initialColors={ledThing.colors}
+            anim={ledThing.animation}
+            intensity={ledThing.intensity}
+          />
         ))}
       </Container>
     </ThemeProvider>

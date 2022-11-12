@@ -42,12 +42,12 @@ class LedThing():
     colors: list[str] = field(default_factory=list)
     enabled: bool = False
     intensity: int = 50
+    animation: int = 0
 
 
 @app.get("/things/led/list")
 def things_led_list():
     return jsonify(list(led_things.values())), 200
-
 
 @debounce(0.250)
 def send_led_cmd(thing_id:str,cmd:dict):
@@ -64,9 +64,9 @@ def things_led_set(thing_id):
     print(colors)
     send_led_cmd(thing_id, jsonify({
         "colors": colors,
-        "intensity": 240,
-        "enabled": True,
-        "animation": 0
+        "intensity": request.json["intensity"],
+        "enabled": request.json["enabled"],
+        "animation": request.json["animation"]
     }).get_data(as_text=True))
     
     return "OK", 200
@@ -99,6 +99,7 @@ def mqtt_message(client, userdata, msg):
             map(lambda color: "#"+color.replace("0x", ""), data["colors"]))
         led_things[thing_id].intensity = data["intensity"]
         led_things[thing_id].enabled = data["enabled"]
+        led_things[thing_id].animation = data["animation"]
 
 
 def mqtt_connected(client, userdata, flags, rc):
@@ -118,9 +119,10 @@ def startup():
                    port=1883,
                    keepalive=60,
                    )
-    client.tls_set("../certs/homethings-ca-cert.crt",
-                   "../certs/homethings-client-cert.crt",
-                   "../certs/homethings-client-key.pem")
+
+    client.tls_set("./homethings-ca-cert.crt",
+                   "./homethings-client-cert.crt",
+                   "./homethings-client-key.pem")
 
     client.tls_insecure_set(True)
     client.loop_start()

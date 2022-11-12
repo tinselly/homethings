@@ -19,7 +19,8 @@ struct strip_config {
     size_t colors_count;
     size_t pixels_count;
     uint8_t intensity;
-    uint8_t speed;
+    uint32_t animation_time;
+    uint32_t animation;
 };
 
 struct strip_state {
@@ -28,6 +29,8 @@ struct strip_state {
     size_t color_prev;
     size_t color_next;
 };
+
+typedef void(*strip_animate_t)(const struct strip_state* state);
 
 /******************************************************************************/
 
